@@ -219,6 +219,10 @@ export interface PortalData {
       img: string;
     }[];
   };
+  financeNews: {
+    sectionTag: string;
+    title: string;
+  };
   locationsByCity: {
     title: string;
     items: {
