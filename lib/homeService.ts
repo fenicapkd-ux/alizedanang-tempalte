@@ -8,6 +8,7 @@ export interface HomeData {
   shopCategories: any[];
   dynamicProjects: any[];
   wpPosts: any[];
+  financePosts: any[];
 }
 
 export async function getHomeData(locale: string): Promise<HomeData> {
@@ -17,8 +18,10 @@ export async function getHomeData(locale: string): Promise<HomeData> {
   let shopCategories: any[] = [];
   let dynamicProjects: any[] = [];
   let wpPosts: any[] = [];
+  let financePosts: any[] = [];
 
   const WP_API = process.env.NEXT_PUBLIC_WP_API_URL || 'https://atservice.vn/wp-json/wp/v2';
+  const FINANCE_WP_API = process.env.NEXT_PUBLIC_FINANCE_WP_API_URL || 'https://atservice.com.vn/wp-json/wp/v2';
 
   // Chạy TẤT CẢ các truy vấn một cách song song để tiết kiệm thời gian (Parallel Fetching)
   const [
@@ -26,7 +29,8 @@ export async function getHomeData(locale: string): Promise<HomeData> {
     medusaProductsRes,
     medusaCategoriesRes,
     graphqlProjectsRes,
-    wpRes
+    wpRes,
+    financeRes
   ] = await Promise.allSettled([
     getProperties(locale),
     import('./medusa').then(m => m.getProducts({ limit: 20 })),
@@ -44,7 +48,8 @@ export async function getHomeData(locale: string): Promise<HomeData> {
         }
       }
     `, {}, { next: { revalidate: 60 } }),
-    fetch(`${WP_API}/posts?per_page=8&_embed`, { next: { revalidate: 3600 } })
+    fetch(`${WP_API}/posts?per_page=8&_embed`, { next: { revalidate: 3600 } }),
+    fetch(`${FINANCE_WP_API}/posts?per_page=4&_embed`, { next: { revalidate: 3600 } })
   ]);
 
   // --- Xử lý kết quả Properties ---
@@ -110,12 +115,27 @@ export async function getHomeData(locale: string): Promise<HomeData> {
     console.warn("Lỗi fetch WP News:", wpRes.reason);
   }
 
+  // --- Xử lý kết quả Finance News ---
+  if (financeRes.status === 'fulfilled') {
+    const response = financeRes.value;
+    if (response.ok) {
+      try {
+        financePosts = await response.json();
+      } catch (e) {
+        console.warn("Lỗi parse JSON Finance News:", e);
+      }
+    }
+  } else {
+    console.warn("Lỗi fetch Finance News:", financeRes.reason);
+  }
+
   return {
     featuredProperties,
     featuredApartments,
     shopProducts,
     shopCategories,
     dynamicProjects,
-    wpPosts
+    wpPosts,
+    financePosts
   };
 }

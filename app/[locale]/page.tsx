@@ -13,6 +13,7 @@ import HomeProductsCarousel from "../../components/home/HomeProductsCarousel";
 import HomeCategoryProducts from "../../components/home/HomeCategoryProducts";
 import HomeTools from "../../components/home/HomeTools";
 import HomeNews from "../../components/home/HomeNews";
+import HomeFinance from "../../components/home/HomeFinance";
 
 import { getHomeData } from "../../lib/homeService";
 
@@ -52,7 +53,8 @@ export default async function PortalHomePage({ params }: { params: Promise<{ loc
     shopProducts,
     shopCategories,
     dynamicProjects,
-    wpPosts
+    wpPosts,
+    financePosts
   } = await getHomeData(locale);
 
   return (
@@ -74,6 +76,8 @@ export default async function PortalHomePage({ params }: { params: Promise<{ loc
       <HomeCategoryProducts categories={shopCategories} products={shopProducts} locale={locale} />
 
       <HomeNews wpPosts={wpPosts} data={data.news} locale={locale} />
+      
+      <HomeFinance financePosts={financePosts} data={data.financeNews} locale={locale} />
 
       <HomeTools data={data.tools} locale={locale} />
 

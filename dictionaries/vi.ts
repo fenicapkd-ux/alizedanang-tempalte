@@ -201,6 +201,10 @@ export const viDict: Dictionary = {
         { date: "05-04-2026", title: "Lễ ra mắt dự án ALIZE Residence", desc: "Sáng nay tại Đà Nẵng đã diễn ra buổi lễ kickoff giới thiệu kiệt tác không gian sống ALIZE...", img: "https://images.unsplash.com/photo-1551882547-ff40c0d13c11?q=80&w=2000" }
       ]
     },
+    financeNews: {
+      sectionTag: "TÀI CHÍNH KINH DOANH",
+      title: "Tin Tức Tài Chính"
+    },
     locationsByCity: {
       title: "Bất động sản theo địa điểm",
       items: [

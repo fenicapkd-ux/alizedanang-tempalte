@@ -202,6 +202,10 @@ export const enDict: Dictionary = {
         { date: "05-04-2026", title: "ALIZE Residence Grand Launching Event", desc: "This morning in Da Nang, the kickoff ceremony introduced the masterpiece ALIZE...", img: "https://images.unsplash.com/photo-1551882547-ff40c0d13c11?q=80&w=2000" }
       ]
     },
+    financeNews: {
+      sectionTag: "FINANCE & BUSINESS",
+      title: "Financial News"
+    },
     locationsByCity: {
       title: "Properties by Location",
       items: [
