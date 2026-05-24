@@ -9,7 +9,6 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleTagManager } from '@next/third-parties/google';
 
-export const dynamic = 'force-dynamic';
 
 const inter = Inter({ subsets: ["latin", "vietnamese"], variable: '--font-sans' });
 const playfair = Playfair_Display({ subsets: ["latin", "vietnamese"], variable: '--font-serif', style: ['normal', 'italic'] });

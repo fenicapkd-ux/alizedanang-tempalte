@@ -5,6 +5,8 @@ import { Metadata } from "next";
 import MasterMap from "../../../components/MasterMap";
 import { fetchGraphQL } from "../../../lib/graphql";
 
+export const revalidate = 300; // 5 phút — dữ liệu map không thay đổi thường xuyên
+
 export const metadata: Metadata = {
   title: "Bản Đồ Bất Động Sản - G-Estate",
   description: "Trải nghiệm khám phá các dự án và căn hộ cao cấp qua Bản Đồ Tương Tác Ecosystem."

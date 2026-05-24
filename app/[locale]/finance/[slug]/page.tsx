@@ -8,16 +8,23 @@ import Link from "next/link";
 import BlogCard from "../../../../components/BlogCard";
 import { sanitizeHtml, sanitizeTitle } from "../../../../lib/sanitize";
 
+// ── Shared cached fetch — dùng chung cho generateMetadata và page — chỉ gọi WP API 1 lần
+async function getFinancePostBySlug(slug: string, WP_API: string) {
+  const res = await fetch(`${WP_API}/posts?slug=${slug}&_embed=1`, {
+    next: { revalidate: 3600 },
+  });
+  const posts = await res.json();
+  return Array.isArray(posts) && posts.length > 0 ? posts[0] : null;
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ locale: string, slug: string }> }): Promise<Metadata> {
   const { locale, slug } = await params;
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://alizedanang.net";
   const WP_API = process.env.NEXT_PUBLIC_FINANCE_WP_API_URL || 'https://atservice.com.vn/wp-json/wp/v2';
 
   try {
-    const res = await fetch(`${WP_API}/posts?slug=${slug}&_embed=1`);
-    const posts = await res.json();
-    if (posts && posts.length > 0) {
-      const p = posts[0];
+    const p = await getFinancePostBySlug(slug, WP_API);
+    if (p) {
       const title = p.title.rendered.replace(/<[^>]+>/g, '');
       const desc = p.excerpt.rendered.replace(/<[^>]+>/g, '').substring(0, 150);
       const img = p._embedded?.['wp:featuredmedia']?.[0]?.source_url || '/images/can-ho-view-bien-my-khe-alize.webp';
@@ -37,23 +44,8 @@ export default async function FinanceDetailPage({ params }: { params: Promise<{ 
   const dict = getDictionary(locale);
   const financeDict: any = dict.finance || dict.blog;
 
-  const WP_API = process.env.NEXT_PUBLIC_FINANCE_WP_API_URL || 'https://atservice.com.vn/wp-json/wp/v2';
-  let post = null;
-  try {
-    const res = await fetch(`${WP_API}/posts?slug=${slug}&_embed=1`, {
-      next: { revalidate: 3600 }
-    });
-    const posts = await res.json();
-    if (posts && posts.length > 0) {
-      post = posts[0];
-    }
-  } catch (error) {
-    console.error("Lỗi kéo tin tức chi tiết Tài Chính WP:", error);
-  }
-
-  if (!post) {
-    notFound();
-  }
+  const post = await getFinancePostBySlug(slug, WP_API);
+  if (!post) notFound();
 
   // Lấy thêm danh sách bài viết liên quan (loại trừ bài hiện tại)
   let relatedPosts: any[] = [];

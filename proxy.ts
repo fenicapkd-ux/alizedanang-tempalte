@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { Redis } from '@upstash/redis';
-import { isIpBanned, recordStrike, BAN_DURATION } from './lib/ipBan';
 
 // ================================================================
-// PROXY (MIDDLEWARE) — Bảo vệ toàn diện tài nguyên Vercel
-// Thứ tự: Static → IP Ban → Malicious Path → Method → UA → Body
+// PROXY (MIDDLEWARE) — Bảo vệ tài nguyên Vercel tại Edge
+// Thứ tự: Static → Malicious Path → Method → UA → Body
 //         → SQLi/XSS Pattern → Rate Limit → Locale Redirect
 // ================================================================
 
@@ -21,8 +20,7 @@ const RATE_LIMITS = {
   page:  { limit: 120, windowSecs: 60 },
 };
 
-// ── PATHS ĐỘC HẠI — Chỉ hacker/scanner mới truy cập vào đây ────
-// Mỗi lần truy cập → +1 strike cho IP đó
+// ── PATHS ĐỘC HẠI ────────────────────────────────────────────────
 const MALICIOUS_PATHS = [
   '/wp-admin', '/wp-login', '/wp-content', '/wp-includes',
   '/xmlrpc.php', '/wp-json/v2/users',
@@ -30,7 +28,7 @@ const MALICIOUS_PATHS = [
   '/.git', '/.gitignore', '/.github',
   '/config.php', '/configuration.php', '/config.yml',
   '/web.config', '/app.config',
-  '/admin', '/administrator', '/phpmyadmin', '/pma',
+  '/administrator', '/phpmyadmin', '/pma',
   '/cpanel', '/whm', '/plesk',
   '/shell', '/cmd', '/eval', '/upload.php',
   '/install.php', '/setup.php', '/info.php',
@@ -39,8 +37,7 @@ const MALICIOUS_PATHS = [
   '/latest/meta-data', '/iam/security-credentials',
 ];
 
-// ── PATTERN URL ĐỘC HẠI — Tấn công tích cực → ban ngay ─────────
-// SQL Injection, XSS, Path Traversal → BAN NGAY 6 GIỜ
+// ── PATTERN URL ĐỘC HẠI (SQLi, XSS, Path Traversal) ────────────
 const MALICIOUS_URL_PATTERNS = [
   /(\.\.[\/\\]){2,}/,
   /<script[\s>]/i,
@@ -62,7 +59,7 @@ const BLOCKED_USER_AGENTS = [
   'lwp-', 'go-http-client', 'java/', 'okhttp',
   'curl/', 'wget/', 'masscan', 'zgrab',
   'sqlmap', 'nikto', 'nmap', 'nuclei', 'dirbuster', 'gobuster',
-  'wfuzz', 'ffuf', 'hydra', 'burpsuite',
+  'wfuzz', 'ffuf', 'hydra',
   'semrushbot', 'ahrefsbot', 'dotbot', 'mj12bot',
   'blexbot', 'seokicks', 'turnitinbot', 'petalbot',
   'bytespider', 'claudebot', 'gptbot', 'ccbot',
@@ -71,24 +68,24 @@ const BLOCKED_USER_AGENTS = [
 // ── HTTP METHOD CHO PHÉP ─────────────────────────────────────────
 const ALLOWED_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
-// ── TRANG NẶNG (giới hạn chặt hơn) ─────────────────────────────
+// ── TRANG NẶNG ───────────────────────────────────────────────────
 const HEAVY_PATHS = ['/map', '/apartments', '/properties', '/projects'];
 
-// ── LOCALE ──────────────────────────────────────────────────────
+// ── LOCALE ───────────────────────────────────────────────────────
 const locales = ['vi', 'en'];
 const defaultLocale = 'vi';
 
 // ── SECURITY HEADERS ─────────────────────────────────────────────
 const SECURITY_HEADERS: Record<string, string> = {
-  'X-Content-Type-Options':           'nosniff',
-  'X-Frame-Options':                  'SAMEORIGIN',
-  'X-XSS-Protection':                 '1; mode=block',
-  'Referrer-Policy':                  'strict-origin-when-cross-origin',
-  'Permissions-Policy':               'camera=(), microphone=(), geolocation=(self), payment=()',
-  'Strict-Transport-Security':        'max-age=63072000; includeSubDomains; preload',
-  'Cross-Origin-Resource-Policy':     'same-origin',
-  'Cross-Origin-Opener-Policy':       'same-origin',
-  'X-Permitted-Cross-Domain-Policies':'none',
+  'X-Content-Type-Options':            'nosniff',
+  'X-Frame-Options':                   'SAMEORIGIN',
+  'X-XSS-Protection':                  '1; mode=block',
+  'Referrer-Policy':                   'strict-origin-when-cross-origin',
+  'Permissions-Policy':                'camera=(), microphone=(), geolocation=(self), payment=()',
+  'Strict-Transport-Security':         'max-age=63072000; includeSubDomains; preload',
+  'Cross-Origin-Resource-Policy':      'same-origin',
+  'Cross-Origin-Opener-Policy':        'same-origin',
+  'X-Permitted-Cross-Domain-Policies': 'none',
 };
 
 function getClientIp(request: NextRequest): string {
@@ -106,12 +103,6 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
   return response;
 }
 
-function blockedResponse(status: number, reason = 'Forbidden'): NextResponse {
-  return applySecurityHeaders(
-    new NextResponse(null, { status, headers: { 'X-Block-Reason': reason } })
-  );
-}
-
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const url = request.nextUrl.href;
@@ -126,50 +117,21 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const ip = getClientIp(request);
-
-  // ── 1. KIỂM TRA IP BAN ───────────────────────────────────────
-  const banStatus = await isIpBanned(ip);
-  if (banStatus.banned) {
-    const retryAfter = banStatus.ttl || 3600;
-    return applySecurityHeaders(
-      new NextResponse(
-        JSON.stringify({
-          error: 'Your IP has been blocked due to suspicious activity.',
-          retryAfter,
-        }),
-        {
-          status: 403,
-          headers: {
-            'Content-Type': 'application/json',
-            'Retry-After': String(retryAfter),
-            'X-Block-Reason': `Banned: ${banStatus.reason}`,
-          },
-        }
-      )
-    );
-  }
-
   const lowerPath = pathname.toLowerCase();
 
-  // ── 2. CHẶN PATHS ĐỘC HẠI — Ghi strike cho IP ───────────────
+  // ── 1. CHẶN PATHS ĐỘC HẠI ────────────────────────────────────
   if (MALICIOUS_PATHS.some((p) => lowerPath.startsWith(p.toLowerCase()))) {
-    // Mỗi lần scan path độc hại → +1 strike
-    await recordStrike(ip, `Malicious path scan: ${pathname}`);
-    return blockedResponse(404, 'Malicious path');
+    return applySecurityHeaders(new NextResponse(null, { status: 404 }));
   }
 
-  // ── 3. CHẶN URL CÓ PATTERN ĐỘC HẠI → BAN NGAY ───────────────
+  // ── 2. CHẶN URL CÓ PATTERN ĐỘC HẠI ──────────────────────────
   const fullUrl = decodeURIComponent(url);
   if (MALICIOUS_URL_PATTERNS.some((pattern) => pattern.test(fullUrl))) {
-    // Tấn công SQL/XSS/Path Traversal tích cực → ban ngay 6 giờ
-    await recordStrike(ip, `Attack pattern in URL: ${pathname}`, BAN_DURATION.MEDIUM);
-    return blockedResponse(400, 'Attack pattern detected');
+    return applySecurityHeaders(new NextResponse(null, { status: 400 }));
   }
 
-  // ── 4. CHẶN HTTP METHOD KHÔNG HỢP LỆ → Ghi strike ───────────
+  // ── 3. CHẶN HTTP METHOD KHÔNG HỢP LỆ ─────────────────────────
   if (!ALLOWED_METHODS.includes(request.method.toUpperCase())) {
-    await recordStrike(ip, `Invalid HTTP method: ${request.method}`);
     return new NextResponse(null, {
       status: 405,
       headers: { Allow: ALLOWED_METHODS.join(', ') },
@@ -178,23 +140,20 @@ export default async function proxy(request: NextRequest) {
 
   const userAgent = (request.headers.get('user-agent') || '').toLowerCase();
 
-  // ── 5. CHẶN USER-AGENT TRỐNG / QUÁ NGẮN → Ghi strike ────────
+  // ── 4. CHẶN USER-AGENT TRỐNG ─────────────────────────────────
   if (!userAgent || userAgent.length < 8) {
-    await recordStrike(ip, 'Empty or invalid User-Agent');
-    return blockedResponse(403, 'Invalid User-Agent');
+    return applySecurityHeaders(new NextResponse(null, { status: 403 }));
   }
 
-  // ── 6. CHẶN BOT / SCANNER THEO USER-AGENT → Ghi strike ───────
+  // ── 5. CHẶN BOT / SCANNER ────────────────────────────────────
   if (BLOCKED_USER_AGENTS.some((bot) => userAgent.includes(bot))) {
-    await recordStrike(ip, `Blocked bot User-Agent: ${userAgent.slice(0, 50)}`);
-    return blockedResponse(403, 'Bot detected');
+    return applySecurityHeaders(new NextResponse(null, { status: 403 }));
   }
 
-  // ── 7. CHẶN POST/PUT payload > 1MB ───────────────────────────
+  // ── 6. CHẶN POST/PUT payload > 1MB ───────────────────────────
   if (request.method === 'POST' || request.method === 'PUT') {
     const contentLength = request.headers.get('content-length');
     if (contentLength && parseInt(contentLength, 10) > 1_048_576) {
-      await recordStrike(ip, 'Oversized payload attack');
       return applySecurityHeaders(
         new NextResponse(
           JSON.stringify({ error: 'Payload quá lớn (tối đa 1MB)' }),
@@ -204,7 +163,8 @@ export default async function proxy(request: NextRequest) {
     }
   }
 
-  // ── 8. RATE LIMITING ─────────────────────────────────────────
+  // ── 7. RATE LIMITING ─────────────────────────────────────────
+  const ip = getClientIp(request);
   const isApi = pathname.startsWith('/api/');
   const isHeavy = HEAVY_PATHS.some((p) => pathname.includes(p));
   const { limit, windowSecs } = isApi
@@ -221,10 +181,6 @@ export default async function proxy(request: NextRequest) {
     if (current === 1) await redis.expire(key, windowSecs);
 
     if (current > limit) {
-      // Vượt rate limit nhiều lần → cộng strike
-      if (current > limit * 2) {
-        await recordStrike(ip, `Rate limit abuse: ${current} req in ${windowSecs}s`);
-      }
       const ttl = await redis.ttl(key);
       return applySecurityHeaders(
         new NextResponse(
@@ -245,7 +201,7 @@ export default async function proxy(request: NextRequest) {
     // Redis lỗi → cho đi qua
   }
 
-  // ── 9. LOCALE REDIRECT ────────────────────────────────────────
+  // ── 8. LOCALE REDIRECT ────────────────────────────────────────
   const pathnameIsMissingLocale = locales.every(
     (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, FormEvent } from "react";
+import React, { useState, useEffect, useRef, useMemo, FormEvent } from "react";
 import { MessageCircle, X, Send, User, ShieldAlert, Paperclip } from "lucide-react";
 import { 
   client, 
@@ -32,6 +32,13 @@ export default function LiveChatWidget() {
   const [connectionError, setConnectionError] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Tạo preview URL cho file đính kèm, tự động revoke khi đổi file (tránh memory leak)
+  const previewUrl = useMemo(
+    () => (attachment ? URL.createObjectURL(attachment) : null),
+    [attachment]
+  );
+  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
   
   // Audio
   const playTing = () => {
@@ -333,7 +340,7 @@ export default function LiveChatWidget() {
             htmlFor="chat-file-upload" 
             className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors shrink-0 ${attachment ? 'bg-green-500/20 text-green-500' : 'bg-white/5 text-champagne hover:bg-white/10 cursor-pointer'} ${(!hasLeadInfo || isUploading) && 'opacity-50 pointer-events-none'}`}
           >
-            {attachment ? <img src={URL.createObjectURL(attachment)} alt="preview" className="w-6 h-6 object-cover rounded" /> : <Paperclip size={18} />}
+            {attachment ? <img src={previewUrl!} alt="preview" className="w-6 h-6 object-cover rounded" /> : <Paperclip size={18} />}
           </label>
           <input
             type="text"
