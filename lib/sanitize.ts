@@ -1,72 +1,76 @@
 /**
  * HTML Sanitizer — Loại bỏ script/XSS khỏi nội dung WordPress/Medusa
- * Dùng isomorphic-dompurify hoạt động cả Server Component lẫn Client Component
+ * Pure regex-based — KHÔNG dùng jsdom/DOMPurify → tương thích Vercel serverless
+ * isomorphic-dompurify bị loại bỏ do jsdom gây ERR_REQUIRE_ESM trên Vercel
  */
-import DOMPurify from 'isomorphic-dompurify';
 
-type SanitizeConfig = Parameters<typeof DOMPurify.sanitize>[1];
+// ── Regex patterns ────────────────────────────────────────────────────
+/** Xoá toàn bộ nội dung <script>...</script> */
+const RE_SCRIPT = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script\s*>/gi;
 
-// Cấu hình whitelist: giữ lại các tag HTML thông thường của blog, chặn script/event handlers
-const BLOG_CONFIG: SanitizeConfig = {
-  ALLOWED_TAGS: [
-    'p', 'br', 'b', 'i', 'em', 'strong', 'u', 's', 'del', 'ins',
-    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-    'ul', 'ol', 'li', 'dl', 'dt', 'dd',
-    'blockquote', 'pre', 'code', 'kbd', 'samp',
-    'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption',
-    'a', 'img', 'figure', 'figcaption', 'picture', 'source',
-    'div', 'span', 'section', 'article', 'aside', 'header', 'footer',
-    'hr', 'small', 'sub', 'sup', 'abbr', 'cite', 'q', 'mark',
-    'iframe',
-  ],
-  ALLOWED_ATTR: [
-    'href', 'src', 'srcset', 'alt', 'title', 'class', 'id',
-    'width', 'height', 'style', 'target', 'rel',
-    'loading', 'decoding', 'fetchpriority',
-    'allowfullscreen', 'frameborder', 'allow',
-    'colspan', 'rowspan', 'scope',
-  ],
-  ALLOW_DATA_ATTR: true,
-  FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onmouseout', 'onfocus', 'onblur'],
-};
+/** Xoá toàn bộ nội dung <style>...</style> */
+const RE_STYLE = /<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style\s*>/gi;
 
-// Cấu hình nhẹ hơn cho tiêu đề (chỉ cho phép inline formatting)
-const TITLE_CONFIG: SanitizeConfig = {
-  ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'span', 'br'],
-  ALLOWED_ATTR: ['class'],
-};
+/** Xoá event handler attributes (onclick, onerror, onload, ...) */
+const RE_EVENTS = /\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi;
 
-// Cấu hình cho product description (Medusa)
-const PRODUCT_CONFIG: SanitizeConfig = {
-  ALLOWED_TAGS: [
-    'p', 'br', 'b', 'i', 'em', 'strong', 'u', 's',
-    'ul', 'ol', 'li', 'h2', 'h3', 'h4',
-    'div', 'span', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
-    'a', 'img',
-  ],
-  ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'width', 'height', 'target', 'rel'],
-};
+/** Thay javascript: bằng void: để vô hiệu hóa JS URL */
+const RE_JS_URL = /javascript\s*:/gi;
+
+/** Xoá data:text/html XSS vector */
+const RE_DATA_HTML = /data\s*:\s*text\/html/gi;
+
+/** Xoá các thẻ nguy hiểm: script, object, embed, applet, base, meta, form, iframe (nếu cần) */
+const RE_DANGEROUS_OPEN = /<(script|object|embed|applet|base|meta|link|form)\b[^>]*\/?>/gi;
+const RE_DANGEROUS_CLOSE = /<\/(script|object|embed|applet|base|meta|link|form)\s*>/gi;
+
+/** Xoá các attribute nguy hiểm ngay cả khi tên không phải "on*" */
+const RE_DANGEROUS_ATTRS = /\s+(srcdoc|xlink:href)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi;
+
+// ── Core sanitize ─────────────────────────────────────────────────────
+function applyCoreSanitize(html: string): string {
+  return html
+    .replace(RE_SCRIPT, '')
+    .replace(RE_STYLE, '')
+    .replace(RE_DANGEROUS_OPEN, '')
+    .replace(RE_DANGEROUS_CLOSE, '')
+    .replace(RE_EVENTS, '')
+    .replace(RE_DANGEROUS_ATTRS, '')
+    .replace(RE_JS_URL, 'void:')
+    .replace(RE_DATA_HTML, '');
+}
 
 /** Sanitize HTML từ WordPress (blog, finance, news content) */
 export function sanitizeHtml(html: string): string {
   if (!html) return '';
-  return DOMPurify.sanitize(html, BLOG_CONFIG) as string;
+  return applyCoreSanitize(html);
 }
 
-/** Sanitize tiêu đề — chỉ giữ inline formatting */
+/** Sanitize tiêu đề — chỉ giữ inline text, strip hầu hết tags */
 export function sanitizeTitle(html: string): string {
   if (!html) return '';
-  return DOMPurify.sanitize(html, TITLE_CONFIG) as string;
+  // Với title, strip tất cả tag ngoại trừ <b>, <i>, <em>, <strong>, <br>
+  return applyCoreSanitize(html)
+    .replace(/<(?!\/?(?:b|i|em|strong|br)\b)[^>]+>/gi, '');
 }
 
 /** Sanitize product description từ Medusa */
 export function sanitizeProduct(html: string): string {
   if (!html) return '';
-  return DOMPurify.sanitize(html, PRODUCT_CONFIG) as string;
+  return applyCoreSanitize(html);
 }
 
 /** Strip toàn bộ HTML — chỉ lấy plain text */
 export function stripHtml(html: string): string {
   if (!html) return '';
-  return (DOMPurify.sanitize(html, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }) as string).trim();
+  return applyCoreSanitize(html)
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }

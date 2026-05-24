@@ -5,6 +5,12 @@ const nextConfig = {
   experimental: {
   },
 
+  // ── ENV VARS: hardcode tại build time — Vercel không cần set thêm ──
+  env: {
+    NEXT_PUBLIC_WP_API_URL: process.env.NEXT_PUBLIC_WP_API_URL || 'https://atservice.vn/wp-json/wp/v2',
+    NEXT_PUBLIC_FINANCE_WP_API_URL: process.env.NEXT_PUBLIC_FINANCE_WP_API_URL || 'https://atservice.com.vn/wp-json/wp/v2',
+  },
+
   // ── SECURITY HEADERS + CLOUDFLARE CACHE RULES ───────────────────
   async headers() {
     return [
@@ -29,7 +35,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https:",
-              "connect-src 'self' https://api.mapbox.com https://*.upstash.io wss://*.appwrite.io https:",
+              "connect-src 'self' https://api.mapbox.com https://*.upstash.io wss://*.appwrite.io https://atservice.vn https://*.atservice.vn https://atservice.com.vn https://*.atservice.com.vn https:",
               "frame-src 'self' https://challenges.cloudflare.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
