@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/appwrite.admin';
 import { ID } from 'node-appwrite';
+import { rateLimit, getClientIp } from '../../../../lib/rateLimit';
 
 export async function POST(req: Request) {
+  // Rate limit: 10 requests / 60s per IP (chống spam chat)
+  const ip = getClientIp(req);
+  const rateLimitRes = await rateLimit(ip, { limit: 10, windowSecs: 60, prefix: 'rl:chat-reply' });
+  if (rateLimitRes) return rateLimitRes;
+
   try {
     const payload = await req.json();
     const { content, senderId, senderType } = payload;

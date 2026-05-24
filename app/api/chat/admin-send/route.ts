@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '../../../../lib/appwrite.admin';
 import { ID } from 'node-appwrite';
+import { rateLimit, getClientIp } from '../../../../lib/rateLimit';
 
 /**
  * API để Admin gửi tin nhắn trả lời Khách
  */
 export async function POST(req: Request) {
+  // Rate limit: 30 requests / 60s per IP
+  const ip = getClientIp(req);
+  const rateLimitRes = await rateLimit(ip, { limit: 30, windowSecs: 60, prefix: 'rl:admin-send' });
+  if (rateLimitRes) return rateLimitRes;
+
   try {
     const payload = await req.json();
     const { content, targetUserId } = payload; // targetUserId chính là senderId của khách để khách biết tin này thuộc về phòng chat của mình

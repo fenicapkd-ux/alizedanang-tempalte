@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
+import { rateLimit, getClientIp } from '../../../../lib/rateLimit';
 
 export async function GET(request: Request) {
+  // Rate limit: 30 requests / 60s per IP
+  const ip = getClientIp(request);
+  const rateLimitRes = await rateLimit(ip, { limit: 30, windowSecs: 60, prefix: 'rl:finance-posts' });
+  if (rateLimitRes) return rateLimitRes;
+
   const { searchParams } = new URL(request.url);
   const page = searchParams.get('page') || '1';
   const per_page = searchParams.get('per_page') || '10';
