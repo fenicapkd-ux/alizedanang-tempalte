@@ -5,7 +5,8 @@ import { Metadata } from "next";
 import MasterMap from "../../../components/MasterMap";
 import { fetchGraphQL } from "../../../lib/graphql";
 
-export const revalidate = 300; // 5 phút — dữ liệu map không thay đổi thường xuyên
+// force-dynamic: trang dùng fetchGraphQL (Redis no-store) — không thể ISR
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: "Bản Đồ Bất Động Sản - G-Estate",

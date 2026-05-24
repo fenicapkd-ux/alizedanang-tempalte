@@ -6,6 +6,9 @@ import FloorPlans from "@/components/FloorPlans";
 import { Metadata } from "next";
 import { fetchGraphQL } from "@/lib/graphql";
 
+// force-dynamic: dùng fetchGraphQL (Redis no-store) — không thể ISR
+export const dynamic = 'force-dynamic';
+
 import ProjectHero from "@/components/projects/ProjectHero";
 import ProjectAmenities from "@/components/projects/ProjectAmenities";
 

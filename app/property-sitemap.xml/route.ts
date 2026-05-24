@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getProperties } from '../../lib/propertyService';
 
-export const revalidate = 86400; // 24 hours ISR
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://alizedanang.net";

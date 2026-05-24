@@ -13,28 +13,28 @@ export async function fetchGraphQL<T>(
 ): Promise<T> {
   const cacheKey = `graphql_cache:${JSON.stringify({ query, variables })}`;
 
-  try {
-    const cachedData = await redis.get<T>(cacheKey);
-    if (cachedData) {
-      console.log(`[GraphQL Cache] ⚡ Trả về dữ liệu từ Upstash Redis cache`);
-      return cachedData;
+  // Skip Redis trong build phase — Redis dùng no-store fetch gây DYNAMIC_SERVER_USAGE
+  // khi Next.js cố prerender tĩnh các trang có revalidate/ISR
+  const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
+
+  if (!isBuildPhase) {
+    try {
+      const cachedData = await redis.get<T>(cacheKey);
+      if (cachedData) {
+        console.log(`[GraphQL Cache] ⚡ Trả về dữ liệu từ Upstash Redis cache`);
+        return cachedData;
+      }
+    } catch (err) {
+      console.warn('[GraphQL Cache] Cảnh báo khi đọc từ Redis:', err);
     }
-  } catch (err) {
-    console.warn('[GraphQL Cache] Cảnh báo khi đọc từ Redis:', err);
   }
 
   console.log(`[GraphQL Fetch] Đang gửi yêu cầu tới: ${GRAPHQL_API_URL}`);
   try {
     const response = await fetch(GRAPHQL_API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query,
-        variables,
-      }),
-      // Theo chuẩn Next.js 14/15, có thể định nghĩa option "next: { revalidate: xxx }"
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, variables }),
       ...options,
     });
 
@@ -48,17 +48,18 @@ export async function fetchGraphQL<T>(
       throw new Error(errors[0].message);
     }
 
-    // Ghi dữ liệu vào cache Upstash Redis (thời gian sống là 10 giây)
-    try {
-      await redis.set(cacheKey, data, { ex: 60 });
-      console.log(`[GraphQL Cache] ✅ Đã lưu dữ liệu vào Redis (TTL: 60s)`);
-    } catch (err) {
-      console.warn('[GraphQL Cache] Lỗi khi lưu vào Redis:', err);
+    // Ghi vào Redis chỉ khi không trong build phase
+    if (!isBuildPhase) {
+      try {
+        await redis.set(cacheKey, data, { ex: 60 });
+        console.log(`[GraphQL Cache] ✅ Đã lưu dữ liệu vào Redis (TTL: 60s)`);
+      } catch (err) {
+        console.warn('[GraphQL Cache] Lỗi khi lưu vào Redis:', err);
+      }
     }
 
     return data as T;
   } catch (error: any) {
-    // Chỉ báo log nhỏ gọn, tránh hiển thị error stack dài làm rác build console
     console.warn(`⚠️ [GraphQL] Mạng chưa sẵn sàng (${error?.message || 'Failed'}), chuyển sang chế độ Offline Fallback cho: ${GRAPHQL_API_URL}`);
     throw error;
   }

@@ -44,6 +44,7 @@ export default async function FinanceDetailPage({ params }: { params: Promise<{ 
   const dict = getDictionary(locale);
   const financeDict: any = dict.finance || dict.blog;
 
+  const WP_API = process.env.NEXT_PUBLIC_FINANCE_WP_API_URL || 'https://atservice.com.vn/wp-json/wp/v2';
   const post = await getFinancePostBySlug(slug, WP_API);
   if (!post) notFound();
 

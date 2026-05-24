@@ -5,37 +5,32 @@ const nextConfig = {
   experimental: {
   },
 
-  // ── SECURITY HEADERS (áp dụng cho tất cả response từ server) ──
-  // Bổ sung thêm một tầng headers cố định ở server-side
+  // ── SECURITY HEADERS + CLOUDFLARE CACHE RULES ───────────────────
   async headers() {
     return [
+      // ── 1. Security headers cho toàn bộ routes ────────────────
       {
-        // Áp dụng cho tất cả các routes
         source: '/(.*)',
         headers: [
-          { key: 'X-Content-Type-Options',    value: 'nosniff' },
-          { key: 'X-Frame-Options',           value: 'SAMEORIGIN' },
-          { key: 'X-XSS-Protection',          value: '1; mode=block' },
-          { key: 'Referrer-Policy',           value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy',        value: 'camera=(), microphone=(), geolocation=(self), payment=()' },
-          // HSTS: buộc HTTPS trong 2 năm
-          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-          // CORP — chặn các site khác nhúng tài nguyên (lộ dữ liệu qua Spectre)
+          { key: 'X-Content-Type-Options',             value: 'nosniff' },
+          { key: 'X-Frame-Options',                    value: 'SAMEORIGIN' },
+          { key: 'X-XSS-Protection',                   value: '1; mode=block' },
+          { key: 'Referrer-Policy',                    value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy',                 value: 'camera=(), microphone=(), geolocation=(self), payment=()' },
+          { key: 'Strict-Transport-Security',          value: 'max-age=63072000; includeSubDomains; preload' },
           { key: 'Cross-Origin-Resource-Policy',       value: 'same-origin' },
-          // COOP — cô lập browsing context, chống Spectre attacks
           { key: 'Cross-Origin-Opener-Policy',         value: 'same-origin' },
-          // XPCDP — chặn Adobe Flash/PDF cross-domain
           { key: 'X-Permitted-Cross-Domain-Policies',  value: 'none' },
-          // CSP cơ bản: chặn inline scripts ngoài whitelist
           {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://cdn.jsdelivr.net",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://cdn.jsdelivr.net https://static.cloudflareinsights.com https://challenges.cloudflare.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https:",
               "connect-src 'self' https://api.mapbox.com https://*.upstash.io wss://*.appwrite.io https:",
+              "frame-src 'self' https://challenges.cloudflare.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
@@ -43,11 +38,69 @@ const nextConfig = {
           },
         ],
       },
+
+      // ── 2. Static assets: JS/CSS — Cloudflare cache 1 năm (immutable) ─
       {
-        // Cache cho ảnh trong /images
+        source: '/_next/static/(.*)',
+        headers: [
+          { key: 'Cache-Control',     value: 'public, max-age=31536000, immutable' },
+          { key: 'CDN-Cache-Control', value: 'max-age=31536000' },
+        ],
+      },
+
+      // ── 3. Ảnh /images — Cloudflare cache 7 ngày ────────────────
+      {
         source: '/images/(.*)',
         headers: [
-          { key: 'Cache-Control', value: 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=3600' },
+          { key: 'Cache-Control',     value: 'public, max-age=604800, s-maxage=604800, stale-while-revalidate=86400' },
+          { key: 'CDN-Cache-Control', value: 'max-age=604800' },
+        ],
+      },
+
+      // ── 4. Trang blog — Cloudflare cache 1 giờ + Early Hints ────
+      {
+        source: '/:locale(vi|en)/blog(.*)',
+        headers: [
+          { key: 'Cache-Control',     value: 'public, s-maxage=3600, stale-while-revalidate=1800' },
+          { key: 'CDN-Cache-Control', value: 'max-age=3600' },
+          { key: 'Link',              value: '</images/can-ho-view-bien-my-khe-alize.webp>; rel=preload; as=image' },
+        ],
+      },
+
+      // ── 5. Trang finance — Cloudflare cache 1 giờ ───────────────
+      {
+        source: '/:locale(vi|en)/finance(.*)',
+        headers: [
+          { key: 'Cache-Control',     value: 'public, s-maxage=3600, stale-while-revalidate=1800' },
+          { key: 'CDN-Cache-Control', value: 'max-age=3600' },
+        ],
+      },
+
+      // ── 6. Trang chủ — Cloudflare cache 60 giây + Early Hints ───
+      {
+        source: '/:locale(vi|en)',
+        headers: [
+          { key: 'Cache-Control',     value: 'public, s-maxage=60, stale-while-revalidate=30' },
+          { key: 'CDN-Cache-Control', value: 'max-age=60' },
+          { key: 'Link',              value: '</images/can-ho-view-bien-my-khe-alize.webp>; rel=preload; as=image' },
+        ],
+      },
+
+      // ── 7. Sitemap XML — Cloudflare cache 24 giờ ────────────────
+      {
+        source: '/(.*sitemap.*|robots.txt)',
+        headers: [
+          { key: 'Cache-Control',     value: 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=3600' },
+          { key: 'CDN-Cache-Control', value: 'max-age=86400' },
+        ],
+      },
+
+      // ── 8. API routes — KHÔNG cache tại Cloudflare ──────────────
+      {
+        source: '/api/(.*)',
+        headers: [
+          { key: 'Cache-Control',     value: 'no-store, no-cache, must-revalidate' },
+          { key: 'CDN-Cache-Control', value: 'no-store' },
         ],
       },
     ];
