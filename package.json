@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
+    "@marsidev/react-turnstile": "^1.5.2",
     "@medusajs/js-sdk": "^2.14.2",
     "@next/third-parties": "^16.2.6",
     "@tanstack/react-query": "^5.100.10",

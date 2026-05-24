@@ -1,6 +1,7 @@
 import { Inter, Playfair_Display } from "next/font/google";
 import "../globals.css";
 import { Metadata } from 'next';
+import Script from 'next/script';
 import LiveChatWidget from '../../components/LiveChatWidget';
 import StoreShell from '../../components/StoreShell';
 import { Web3Provider } from '../../components/web3/Web3Provider';
@@ -54,6 +55,13 @@ export default async function RootLayout({
         <LiveChatWidget />
         <Analytics />
         <SpeedInsights />
+        {/* Cloudflare Web Analytics */}
+        <Script
+          defer
+          src="https://static.cloudflareinsights.com/beacon.min.js"
+          data-cf-beacon='{"token": "fee5c5696c2e4638b4e48d08cacf8dd7"}'
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
