@@ -20,6 +20,12 @@ const nextConfig = {
           { key: 'Permissions-Policy',        value: 'camera=(), microphone=(), geolocation=(self), payment=()' },
           // HSTS: buộc HTTPS trong 2 năm
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+          // CORP — chặn các site khác nhúng tài nguyên (lộ dữ liệu qua Spectre)
+          { key: 'Cross-Origin-Resource-Policy',       value: 'same-origin' },
+          // COOP — cô lập browsing context, chống Spectre attacks
+          { key: 'Cross-Origin-Opener-Policy',         value: 'same-origin' },
+          // XPCDP — chặn Adobe Flash/PDF cross-domain
+          { key: 'X-Permitted-Cross-Domain-Policies',  value: 'none' },
           // CSP cơ bản: chặn inline scripts ngoài whitelist
           {
             key: 'Content-Security-Policy',

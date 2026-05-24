@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 
 .env
+# Secret env files — KHÔNG commit lên Git
+.env.local
+.env.*.local
+.env.production

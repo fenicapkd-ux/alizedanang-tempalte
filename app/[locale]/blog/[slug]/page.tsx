@@ -6,6 +6,7 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import BlogCard from "../../../../components/BlogCard";
+import { sanitizeHtml, sanitizeTitle } from "../../../../lib/sanitize";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string, slug: string }> }): Promise<Metadata> {
   const { locale, slug } = await params;
@@ -64,8 +65,8 @@ export default async function BlogDetailPage({ params }: { params: Promise<{ loc
     console.error("Lỗi kéo tin tức liên quan WP:", error);
   }
 
-  const title = post.title.rendered;
-  const content = post.content.rendered;
+  const title = sanitizeTitle(post.title.rendered);
+  const content = sanitizeHtml(post.content.rendered);
   const featuredMedia = post._embedded?.['wp:featuredmedia']?.[0]?.source_url || '/images/can-ho-view-bien-my-khe-alize.webp';
   const date = new Date(post.date).toLocaleDateString(locale === 'vi' ? 'vi-VN' : 'en-US', { day: '2-digit', month: 'long', year: 'numeric' });
 
@@ -104,7 +105,7 @@ export default async function BlogDetailPage({ params }: { params: Promise<{ loc
                     </div>
                     <div className="flex flex-col">
                       <span className="text-gold text-[9px] uppercase font-bold tracking-widest mb-1">{rpDate}</span>
-                      <h4 className="text-white text-sm font-medium line-clamp-2 group-hover:text-gold transition-colors leading-relaxed" dangerouslySetInnerHTML={{ __html: rpTitle }} />
+                      <h4 className="text-white text-sm font-medium line-clamp-2 group-hover:text-gold transition-colors leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitizeTitle(rpTitle) }} />
                     </div>
                   </Link>
                 );

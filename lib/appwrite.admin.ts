@@ -6,16 +6,23 @@ import { Client as NodeClient, Databases as NodeDatabases, Users as NodeUsers } 
  */
 
 const APPWRITE_ENDPOINT = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "https://fra.cloud.appwrite.io/v1";
-const APPWRITE_PROJECT_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID || "REPLACE_WITH_YOUR_PROJECT_ID";
+const APPWRITE_PROJECT_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID || "";
 
-// CHÚ Ý: Đây là Server Key, TUYỆT ĐỐI không dùng prefix NEXT_PUBLIC_ để tránh rò rỉ ra Frontend
-const APPWRITE_API_KEY = process.env.APPWRITE_API_KEY || "standard_d1879916ed2dc932de872cbd3d0cf7e1796e8564fa6f87d1f23150ec9dee5180b8116545154b771b7026a8431590cabdc22aa7022800519e8be691986734b699211b1870b0fa4d3ea36fd42edd1a4319dd4fad44c606cb1c97c6e9cd133919b0bc407a8fbdaac40f78014c53553e1cf5626790d324565911a249932c862a76bd";
+// CHÚ Ý: Đây là Server Key — TUYỆT ĐỐI không dùng NEXT_PUBLIC_ prefix
+// Phải được khai báo trong .env.local hoặc Vercel Environment Variables
+const APPWRITE_API_KEY = process.env.APPWRITE_API_KEY;
+if (!APPWRITE_API_KEY) {
+  throw new Error(
+    '[Appwrite Admin] Thiếu biến môi trường APPWRITE_API_KEY. ' +
+    'Thêm vào .env.local hoặc Vercel Dashboard (không dùng NEXT_PUBLIC_ prefix).'
+  );
+}
 
 export function createAdminClient() {
   const client = new NodeClient()
     .setEndpoint(APPWRITE_ENDPOINT)
     .setProject(APPWRITE_PROJECT_ID)
-    .setKey(APPWRITE_API_KEY);
+    .setKey(APPWRITE_API_KEY!);
 
   return {
     get users() {

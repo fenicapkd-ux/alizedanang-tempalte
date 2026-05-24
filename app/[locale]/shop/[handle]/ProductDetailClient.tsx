@@ -5,6 +5,7 @@ import { ChevronRight, Heart, Minus, Plus, ShoppingBag, ShieldCheck, Truck, Shar
 import Link from "next/link";
 import ConsultationModal from "../../../../components/ConsultationModal";
 import { sendGTMEvent } from '@next/third-parties/google';
+import { sanitizeProduct } from "../../../../lib/sanitize";
 
 interface ProductDetailClientProps {
   product: any;
@@ -217,7 +218,7 @@ export default function ProductDetailClient({ product, relatedProducts = [], loc
               {locale === 'vi' ? 'Thông Tin Sản Phẩm' : 'Product Information'}
             </h2>
             <div className="prose prose-invert max-w-4xl mx-auto text-white/60 font-light leading-relaxed prose-p:mb-4 prose-headings:text-white prose-headings:font-serif">
-              <div dangerouslySetInnerHTML={{ __html: product.description }} />
+              <div dangerouslySetInnerHTML={{ __html: sanitizeProduct(product.description) }} />
             </div>
           </div>
         )}
