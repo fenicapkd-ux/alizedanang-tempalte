@@ -10,7 +10,7 @@ export async function GET() {
 
   try {
     const BLOG_API = process.env.NEXT_PUBLIC_WP_API_URL || 'https://atservice.vn/wp-json/wp/v2';
-    const res = await fetch(`${BLOG_API}/posts?per_page=100&page=1`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${BLOG_API}/posts?per_page=1&page=1`, { next: { revalidate: 3600 } });
     if (res.ok) {
       blogTotalPages = parseInt(res.headers.get('x-wp-totalpages') || '1', 10);
     }
@@ -20,7 +20,7 @@ export async function GET() {
 
   try {
     const FINANCE_API = process.env.NEXT_PUBLIC_FINANCE_WP_API_URL || 'https://atservice.com.vn/wp-json/wp/v2';
-    const res = await fetch(`${FINANCE_API}/posts?per_page=100&page=1`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${FINANCE_API}/posts?per_page=1&page=1`, { next: { revalidate: 3600 } });
     if (res.ok) {
       financeTotalPages = parseInt(res.headers.get('x-wp-totalpages') || '1', 10);
     }

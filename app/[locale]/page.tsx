@@ -17,7 +17,8 @@ import HomeFinance from "../../components/home/HomeFinance";
 
 import { getHomeData } from "../../lib/homeService";
 
-export const revalidate = 60; // Tăng revalidate từ 10 lên 60 giây để tận dụng bộ nhớ đệm tốt hơn
+// force-dynamic: home page gọi Medusa + GraphQL, không prerender được khi build
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;

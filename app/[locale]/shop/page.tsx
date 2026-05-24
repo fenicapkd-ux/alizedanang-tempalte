@@ -5,7 +5,8 @@ import { getDictionary } from "../../../dictionaries";
 import { getProducts, getProductCategories } from "../../../lib/medusa";
 import ShopClient from "./ShopClient";
 
-export const revalidate = 60; // Refresh data every 60 seconds
+// force-dynamic: Medusa commerce không available lúc build → ETIMEDOUT
+export const dynamic = 'force-dynamic';
 
 export default async function ShopPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

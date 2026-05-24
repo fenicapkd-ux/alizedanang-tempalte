@@ -8,13 +8,19 @@ import Link from "next/link";
 import BlogCard from "../../../../components/BlogCard";
 import { sanitizeHtml, sanitizeTitle } from "../../../../lib/sanitize";
 
-// ── Shared cached fetch — dùng chung cho generateMetadata và page — chỉ gọi WP API 1 lần
+// ── Shared cached fetch — có try-catch — trả null nếu WP API lỗi (404 thay vì 500)
 async function getFinancePostBySlug(slug: string, WP_API: string) {
-  const res = await fetch(`${WP_API}/posts?slug=${slug}&_embed=1`, {
-    next: { revalidate: 3600 },
-  });
-  const posts = await res.json();
-  return Array.isArray(posts) && posts.length > 0 ? posts[0] : null;
+  try {
+    const res = await fetch(`${WP_API}/posts?slug=${slug}&_embed=1`, {
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return null;
+    const posts = await res.json();
+    return Array.isArray(posts) && posts.length > 0 ? posts[0] : null;
+  } catch (err) {
+    console.error('[Finance] Lỗi kéo bài viết WP:', err);
+    return null;
+  }
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string, slug: string }> }): Promise<Metadata> {

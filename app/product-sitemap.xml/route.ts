@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getProducts } from '../../lib/medusa';
 
-export const revalidate = 86400; // 24 hours ISR
+export const dynamic = 'force-dynamic'; // Medusa không available lúc build
 
 export async function GET() {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://alizedanang.net";

@@ -1,12 +1,16 @@
 "use client";
 
 import { useState, use } from "react";
+import dynamic from "next/dynamic";
 import PortalHeader from "@/components/PortalHeader";
 import PortalFooter from "@/components/PortalFooter";
-import MortgageCalculator from "@/components/tools/MortgageCalculator";
-import RentalYieldCalculator from "@/components/tools/RentalYieldCalculator";
-import TaxCalculator from "@/components/tools/TaxCalculator";
 import { getDictionary } from "@/dictionaries";
+
+// Lazy-load recharts-based calculators với ssr:false — recharts cần DOM width/height
+// không tồn tại trong SSR Node.js → gây warning stderr → exit code 1 khi build
+const MortgageCalculator = dynamic(() => import("@/components/tools/MortgageCalculator"), { ssr: false });
+const RentalYieldCalculator = dynamic(() => import("@/components/tools/RentalYieldCalculator"), { ssr: false });
+const TaxCalculator = dynamic(() => import("@/components/tools/TaxCalculator"), { ssr: false });
 
 export default function ToolsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = use(params);

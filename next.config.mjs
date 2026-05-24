@@ -39,15 +39,6 @@ const nextConfig = {
         ],
       },
 
-      // ── 2. Static assets: JS/CSS — Cloudflare cache 1 năm (immutable) ─
-      {
-        source: '/_next/static/(.*)',
-        headers: [
-          { key: 'Cache-Control',     value: 'public, max-age=31536000, immutable' },
-          { key: 'CDN-Cache-Control', value: 'max-age=31536000' },
-        ],
-      },
-
       // ── 3. Ảnh /images — Cloudflare cache 7 ngày ────────────────
       {
         source: '/images/(.*)',
