@@ -118,3 +118,103 @@ export const GET_BLOGS_QUERY = `
     }
   }
 `;
+
+// ── PROJECTS QUERIES ───────────────────────────────────────────────────
+
+/** Dùng cho danh sách trang /projects và trang chủ HomeFeaturedProjects */
+export const GET_PROJECTS_QUERY = `
+  query GetProjects {
+    projects {
+      id slug name name_en brand_name tagline
+      status type segment
+      price_from price_to price_display price_per_m2
+      developer developer_logo
+      total_floors total_units total_area_m2
+      certificate handover_date
+      thumbnail_img thumbnail_video cover_image
+      is_published is_featured is_new_badge sort_order
+      landing_page_url landing_url_active
+      location { id slug name name_en lat lng }
+      address district city lat lng
+    }
+  }
+`;
+
+/** Dùng cho trang chủ — chỉ lấy featured projects */
+export const GET_PROJECTS_FEATURED_QUERY = `
+  query GetFeaturedProjects {
+    projects {
+      id slug name name_en brand_name tagline status type
+      price_display thumbnail_img cover_image
+      is_featured is_new_badge
+      landing_page_url landing_url_active
+      location { name }
+    }
+  }
+`;
+
+/** Dùng cho trang landing page dự án — đầy đủ tất cả sections và relations */
+export const GET_PROJECT_BY_SLUG_QUERY = `
+  query GetProject($slug: String!) {
+    project(slug: $slug) {
+      id slug name name_en brand_name tagline tagline_en
+      status type segment
+      price_from price_to price_display price_per_m2 price_unit
+      address street ward district city lat lng
+      developer developer_logo developer_website designer interior_designer
+      constructor_company management_company distributor
+      total_area_m2 build_area_m2 park_area_m2 build_density_pct
+      total_towers total_floors total_basement total_units
+      total_shophouses total_penthouses parking_capacity
+      certificate ownership_type license_no
+      start_date completion_date handover_date
+      thumbnail_img thumbnail_video cover_image
+      is_published is_featured is_new_badge view_count
+      landing_page_url landing_url_active
+
+      hero_data
+      overview_data
+      values_data
+      location_data
+      architecture_data
+      amenities_header
+      services_header
+      floorplans_header
+      gallery_header
+      contact_data
+      seo_data
+
+      location { id slug name name_en lat lng }
+
+      amenities {
+        id category_tag category_tag_en title title_en
+        description description_en image_url icon_name highlight_stat sort_order
+      }
+
+      floorplans {
+        id tab_id tab_name space_name space_name_en
+        area_m2 area_display beds baths living_rooms floors balcony balcony_area_m2
+        price_from price_display price_per_m2 status availability
+        description description_en
+        spec_left_label spec_left_value spec_right_label spec_right_value
+        image_url image_3d_url image_exterior_url tour_3d_url sort_order
+      }
+
+      services {
+        id icon_type icon_url title title_en description description_en sort_order
+      }
+
+      gallery_categories {
+        id tag tag_en title title_en description description_en sort_order
+        images {
+          id image_url thumbnail_url webp_url alt_text caption is_cover sort_order
+        }
+      }
+
+      media {
+        id type title title_en url embed_url thumbnail_url duration_seconds is_featured sort_order
+      }
+    }
+  }
+`;
+

@@ -1,5 +1,5 @@
 import { getProperties } from "./propertyService";
-import { fetchGraphQL } from "./graphql";
+import { fetchGraphQL, GET_PROJECTS_FEATURED_QUERY } from "./graphql";
 
 export interface HomeData {
   featuredProperties: any[];
@@ -35,19 +35,7 @@ export async function getHomeData(locale: string): Promise<HomeData> {
     getProperties(locale),
     import('./medusa').then(m => m.getProducts({ limit: 20 })),
     import('./medusa').then(m => m.getProductCategories()),
-    fetchGraphQL(`
-      query {
-        projects {
-          id
-          name
-          slug
-          hero_data
-          location {
-            name
-          }
-        }
-      }
-    `, {}, { next: { revalidate: 60 } }),
+    fetchGraphQL(GET_PROJECTS_FEATURED_QUERY, {}, { next: { revalidate: 300 } }),
     fetch(`${WP_API}/posts?per_page=8&_embed`, { next: { revalidate: 3600 } }),
     fetch(`${FINANCE_WP_API}/posts?per_page=4&_embed`, { next: { revalidate: 3600 } })
   ]);
@@ -96,10 +84,18 @@ export async function getHomeData(locale: string): Promise<HomeData> {
   // --- Xử lý kết quả GraphQL Projects ---
   if (graphqlProjectsRes.status === 'fulfilled') {
     const data: any = graphqlProjectsRes.value;
-    if (data?.projects) dynamicProjects = data.projects;
+    if (data?.projects) {
+      // Map thumbnail_img → hero_img for backward compatibility with HomeFeaturedProjects card
+      dynamicProjects = data.projects.map((p: any) => ({
+        ...p,
+        hero_img: p.thumbnail_img || p.cover_image || '',
+        location: p.location || { name: 'Đà Nẵng' },
+      }));
+    }
   } else {
     console.warn("Lỗi kéo dữ liệu Project:", graphqlProjectsRes.reason);
   }
+
 
   // --- Xử lý kết quả WordPress News ---
   if (wpRes.status === 'fulfilled') {
